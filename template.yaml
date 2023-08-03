@@ -35,11 +35,18 @@ Resources:
       ParentId: !GetAtt CarsApi.RootResourceId
       PathPart: 'cars'
 
+  SingleCarApiResource: 
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref CarsApi
+      ParentId: !Ref CarsApiResource
+      PathPart: '{PK}'
+
   CarsApiGetSingleCarMethod:
     Type: 'AWS::ApiGateway::Method'
     Properties:
       RestApiId: !Ref CarsApi
-      ResourceId: !Ref CarsApiResource
+      ResourceId: !Ref SingleCarApiResource
       HttpMethod: 'GET'
       AuthorizationType: 'NONE'
       RequestParameters:
