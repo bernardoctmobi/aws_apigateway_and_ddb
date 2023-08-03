@@ -54,14 +54,14 @@ Resources:
       Integration:
         Type: 'AWS'
         Credentials: !GetAtt CarsApiRole.Arn
-        IntegrationHttpMethod: 'GET'
+        IntegrationHttpMethod: 'POST'
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem'
         RequestTemplates:
           application/json: |
             {
               "TableName": "Cars",
               "Key": {
-                "PK": $input.params('PK')
+                "PK": {"S": "$input.params('PK')"}
               }
             }
         IntegrationResponses:
