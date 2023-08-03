@@ -56,6 +56,14 @@ Resources:
         Credentials: !GetAtt CarsApiRole.Arn
         IntegrationHttpMethod: 'GET'
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem'
+        RequestTemplates:
+          application/json: |
+            {
+              "TableName": "Cars",
+              "Key": {
+                "PK": $input.params('PK')
+              }
+            }
         IntegrationResponses:
           - StatusCode: 200
           - StatusCode: 400
