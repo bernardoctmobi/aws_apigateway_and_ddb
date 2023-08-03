@@ -7,8 +7,11 @@ Resources:
     Properties:
       Name: 'CarsApi'
 
-  ApiDeployment:
+  CarsApiDeployment:
     Type: 'AWS::ApiGateway::Deployment'
+    DependsOn:
+      - CarsApiGetSingleCarMethod
+      - CarsApiPostMethod
     Properties:
       RestApiId: !Ref CarsApi
       StageName: 'dev'
@@ -32,27 +35,20 @@ Resources:
       ParentId: !GetAtt CarsApi.RootResourceId
       PathPart: 'cars'
 
-  CarsApiSingleCarResource:
-    Type: 'AWS::ApiGateway::Resource'
-    Properties:
-      RestApiId: !Ref CarsApi
-      ParentId: !GetAtt CarsApi.RootResourceId
-      PathPart: 'cars/{PK}'
-
   CarsApiGetSingleCarMethod:
     Type: 'AWS::ApiGateway::Method'
     Properties:
       RestApiId: !Ref CarsApi
-      ResourceId: !Ref CarsApiSingleCarResource
+      ResourceId: !Ref CarsApiResource
       HttpMethod: 'GET'
       AuthorizationType: 'NONE'
+      RequestParameters:
+        method.request.path.PK: true
       Integration:
         Type: 'AWS'
         Credentials: !GetAtt CarsApiRole.Arn
         IntegrationHttpMethod: 'GET'
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem'
-        RequestParameters:
-          integration.request.path.PK: "method.request.path.PK"
         IntegrationResponses:
           - StatusCode: 200
           - StatusCode: 400
