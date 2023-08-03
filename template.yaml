@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Resources:
+  CarsApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: 'CarsApi'
+
+  ApiDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    Properties:
+      RestApiId: !Ref CarsApi
+      StageName: 'dev'
+
+  CarsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: 'Cars'
+      AttributeDefinitions:
+        - AttributeName: 'PK'
+          AttributeType: 'S'
+      KeySchema:  
+        - AttributeName: 'PK'
+          KeyType: 'HASH'
+      BillingMode: 'PAY_PER_REQUEST'
+
+  CarsApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref CarsApi
+      ParentId: !GetAtt CarsApi.RootResourceId
+      PathPart: 'cars'
+
+  CarsApiGetMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref CarsApi
+      ResourceId: !Ref CarsApiResource
+      HttpMethod: 'GET'
+      AuthorizationType: 'NONE'
+      Integration:
+        Type: 'AWS'
+        Credentials: !GetAtt CarsApiRole.Arn
+        IntegrationHttpMethod: 'GET'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseTemplates:
+              application/json: '{}'
+
+  CarsApiPostMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref CarsApi
+      ResourceId: !Ref CarsApiResource
+      HttpMethod: 'POST'
+      AuthorizationType: 'NONE'
+      RequestModels:
+        application/json: !Ref CarsApiPostModel
+      Integration:
+        Type: 'AWS'
+        Credentials: !GetAtt CarsApiRole.Arn
+        IntegrationHttpMethod: 'POST'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/UpdateItem'
+        RequestTemplates:
+          application/json: |
+            {
+              "TableName": "Cars",
+              "Key": {
+                "PK": {
+                  "S": $input.json('$.PK')
+                }
+              },
+              "UpdateExpression": "SET #brand = :brand, #model = :model, #year = :year ",
+              "ExpressionAttributeNames": {
+                  "#brand": "brand",
+                  "#model": "model",
+                  "#year": "year"
+              },
+              "ExpressionAttributeValues": {
+                ":brand": {
+                  "S": $input.json('$.brand')
+                },
+                ":model": {
+                  "S": $input.json('$.model')
+                },
+                ":year": {
+                  "N": $input.json('$.year')
+                }
+              }
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseTemplates:
+              application/json: '{"Message":"Update successful"}'
+          - StatusCode: 400
+            Selectionpattern: "4\\d{2}"
+            ResponseTemplates:
+              application/json: '{"Error":"Bad Request"}'
+          - StatusCode: 500
+            SelectionPattern: "5\\d{2}"
+            ResponseTemplates:
+              application/json: '{"Error":"Internal Server Error"}'
+
+  CarsApiPostModel:
+    Type: 'AWS::ApiGateway::Model'
+    Properties:
+      RestApiId: !Ref CarsApi
+      ContentType: 'application/json'
+      Name: 'CarsApiPostModel'
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        type: 'object'
+        properties:
+          PK:
+            type: 'string'
+          brand:
+            type: 'string'
+          model:
+            type: 'string'
+          year:
+            type: 'number'
+        required:
+          - PK
+
+  CarsApiRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'apigateway.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'CarsTablePermissionPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:GetItem'
+                Resource: !GetAtt CarsTable.Arn
