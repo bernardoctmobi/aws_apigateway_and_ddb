@@ -32,11 +32,18 @@ Resources:
       ParentId: !GetAtt CarsApi.RootResourceId
       PathPart: 'cars'
 
-  CarsApiGetMethod:
+  CarsApiSingleCarResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref CarsApi
+      ParentId: !GetAtt CarsApi.RootResourceId
+      PathPart: 'cars/{PK}'
+
+  CarsApiGetSingleCarMethod:
     Type: 'AWS::ApiGateway::Method'
     Properties:
       RestApiId: !Ref CarsApi
-      ResourceId: !Ref CarsApiResource
+      ResourceId: !Ref CarsApiSingleCarResource
       HttpMethod: 'GET'
       AuthorizationType: 'NONE'
       Integration:
@@ -44,10 +51,22 @@ Resources:
         Credentials: !GetAtt CarsApiRole.Arn
         IntegrationHttpMethod: 'GET'
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem'
+        RequestParameters:
+          integration.request.path.PK: "method.request.path.PK"
         IntegrationResponses:
           - StatusCode: 200
+          - StatusCode: 400
+            SelectionPattern: "4\\d{2}"
             ResponseTemplates:
-              application/json: '{}'
+              application/json: '{"Error":"Bad Request"}'
+          - StatusCode: 500
+            SelectionPattern: "5\\d{2}"
+            ResponseTemplates:
+              application/json: '{"Error":"Internal Server Error"}'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
 
   CarsApiPostMethod:
     Type: 'AWS::ApiGateway::Method'
@@ -95,7 +114,7 @@ Resources:
             ResponseTemplates:
               application/json: '{"Message":"Update successful"}'
           - StatusCode: 400
-            Selectionpattern: "4\\d{2}"
+            SelectionPattern: "4\\d{2}"
             ResponseTemplates:
               application/json: '{"Error":"Bad Request"}'
           - StatusCode: 500
