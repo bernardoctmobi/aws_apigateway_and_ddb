@@ -102,6 +102,10 @@ Resources:
             SelectionPattern: "5\\d{2}"
             ResponseTemplates:
               application/json: '{"Error":"Internal Server Error"}'
+      MethodResponses:
+        - StatusCode: 200
+        - StatusCode: 400
+        - StatusCode: 500
 
   CarsApiPostModel:
     Type: 'AWS::ApiGateway::Model'
